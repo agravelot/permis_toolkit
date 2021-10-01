@@ -166,14 +166,14 @@ func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		return []InstructorNextLessonsInterval{}, fmt.Errorf("ornikar api call failed, status code : %d", res.StatusCode)
-	}
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		fmt.Println(err)
 		return []InstructorNextLessonsInterval{}, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("ornikar api call failed, status code : %d, body : %s", res.StatusCode, string(body))
 	}
 
 	var lessons LessonsResponse
