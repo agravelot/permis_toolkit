@@ -9,6 +9,7 @@ import (
 
 	"github.com/agravelot/permis_toolkit/discord"
 	"github.com/agravelot/permis_toolkit/ornikar"
+	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
 
@@ -110,25 +111,25 @@ func main() {
 		panic(err)
 	}
 
-	err = discord.Start(config.DiscordToken)
+	dg, err := discord.Start(config.DiscordToken)
 	if err != nil {
 		panic(err)
 	}
-	defer discord.Close()
+	defer dg.Close()
 
 	cookie, err := ornikar.Login(config.OrnikarEmail, config.OrnikarPassword)
 	if err != nil {
 		panic(err)
 	}
 
-	run(cookie)
+	run(dg, cookie)
 
 	for range time.Tick(time.Second * 60) {
-		run(cookie)
+		run(dg, cookie)
 	}
 }
 
-func run(cookie string) {
+func run(dg *discordgo.Session, cookie string) {
 	println("Running : " + time.Now().Format("15:04:05"))
 
 	lessons, err := ornikar.GetRemoteLessons(cookie)
@@ -146,7 +147,7 @@ func run(cookie string) {
 
 	for _, l := range diff {
 		m := formatMessage(l.StartsAt)
-		err := discord.Notify(m)
+		err := discord.Notify(dg, m)
 		println(m)
 		if err != nil {
 			panic(err)

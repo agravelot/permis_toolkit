@@ -6,31 +6,27 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var session *discordgo.Session
 var channelID string
 
-func Start(token string) error {
+func Start(token string) (*discordgo.Session, error) {
 	dg, err := discordgo.New("Bot " + token)
 
-	// TODO Do not use global ?
-	session = dg
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = session.Open()
+	err = dg.Open()
 	if err != nil {
-		return err
-
+		return nil, err
 	}
 
-	for _, g := range session.State.Guilds {
-		channels, err := session.GuildChannels(g.ID)
+	for _, g := range dg.State.Guilds {
+		channels, err := dg.GuildChannels(g.ID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, c := range channels {
+			// TODO Make it configurable
 			if c.Name == "permis" {
 				channelID = c.ID
 			}
@@ -38,19 +34,15 @@ func Start(token string) error {
 	}
 
 	if channelID == "" {
-		return errors.New("unable to get channel id")
+		return nil, errors.New("unable to get channel id")
 	}
 
-	return nil
+	return dg, nil
 }
 
-func Close() {
-	session.Close()
-}
-
-func Notify(message string) error {
+func Notify(dg *discordgo.Session, message string) error {
 	// TODO use ChannelMessageSendComplex to not include embed og image
-	_, err := session.ChannelMessageSend(channelID, message)
+	_, err := dg.ChannelMessageSend(channelID, message)
 	if err != nil {
 		return err
 	}
