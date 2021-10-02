@@ -122,18 +122,29 @@ func main() {
 		panic(err)
 	}
 
-	run(dg, cookie)
+	run(&config, dg, cookie)
 
 	for range time.Tick(time.Second * 60) {
-		run(dg, cookie)
+		run(&config, dg, cookie)
 	}
 }
 
-func run(dg *discordgo.Session, cookie string) {
+func run(config *Config, dg *discordgo.Session, cookie string) {
 	println("Running : " + time.Now().Format("15:04:05"))
 
 	lessons, err := ornikar.GetRemoteLessons(cookie)
-	// TODO if 401, refresh cookie
+	// TODO if 400, refresh cookie
+	_, ok := err.(*ornikar.UnauthenticatedError)
+	if ok {
+		cookie, err := ornikar.Login(config.OrnikarEmail, config.OrnikarPassword)
+		if err != nil {
+			panic(err)
+		}
+		lessons, err = ornikar.GetRemoteLessons(cookie)
+		if err != nil {
+			panic(err)
+		}
+	}
 	if err != nil {
 		panic(err)
 	}

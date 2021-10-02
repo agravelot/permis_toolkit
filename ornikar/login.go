@@ -111,6 +111,12 @@ type LessonsResponse struct {
 	} `json:"data"`
 }
 
+type UnauthenticatedError struct{}
+
+func (m *UnauthenticatedError) Error() string {
+	return "unauthenticated"
+}
+
 func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 	url := "https://app-gateway.ornikar.com/graphql"
 	method := "POST"
@@ -170,6 +176,10 @@ func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 	if err != nil {
 		fmt.Println(err)
 		return []InstructorNextLessonsInterval{}, err
+	}
+
+	if res.StatusCode != http.StatusBadRequest && strings.Contains(string(body), "UNAUTHENTICATED") {
+		return []InstructorNextLessonsInterval{}, &UnauthenticatedError{}
 	}
 
 	if res.StatusCode != http.StatusOK {
