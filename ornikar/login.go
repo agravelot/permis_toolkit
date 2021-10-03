@@ -19,7 +19,7 @@ const ornikarUrl = "https://www.ornikar.com/connexion"
 const loginButtonSelector = "#app-boilerplate-root-element > div > div.styles_AppPageWithoutShell__22P5T > div.styles_AuthenticationLayout__381Bv > div.styles_Container__cW10h > div.kitt_Container_XI20R.kitt_DepthHigh_2cpa8.styles_Card__9TFUm > div > div.styles_Form__3rHXh > div > form > div.auth_SignInSubmit_3mDF7 > button"
 const homeSelector = "#app-boilerplate-root-element > div > div:nth-child(2) > div > div.styles_Content__2ZZRg > div:nth-child(2) > div.styles_GridLayout__1Sg3D > div.styles_Row__3bxvG > div.styles_Column__YfouA.styles_Span2__-FcHP > div.styles_Container__1Xn_M.styles_ContainerWithActions__1mSJa.styles_ContainerWithActionsOnColumn__cGdPZ.styles_SectionHeader__3ZvjM > div.styles_Title__6PgIA > h4"
 
-func Login(email, password string) (string, error) {
+func Login(cookie *string, email, password string) error {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
@@ -36,14 +36,23 @@ func Login(email, password string) (string, error) {
 	)
 	defer cancel()
 
-	var cookie string
-	if err := chromedp.Run(ctx, loginTasks(&ctx, ornikarUrl, &cookie, email, password)); err != nil {
-		return "", err
+	var cookieExpiresAt time.Time
+	if err := chromedp.Run(ctx, loginTasks(&ctx, ornikarUrl, cookie, &cookieExpiresAt, email, password)); err != nil {
+		return err
 	}
 
-	cookie = "lwaat=aze"
+	// Refresh cookie before expire
+	accessTokenRefreshAt := cookieExpiresAt.Sub(time.Now().Add(-10 * time.Minute))
+	log.Println(fmt.Sprintf("ornikar: Access token refresh scheduled in:  %s", accessTokenRefreshAt))
+	time.AfterFunc(accessTokenRefreshAt, func() {
+		log.Println("ornikar: refreshing access token..")
+		err := Login(cookie, email, password)
+		if err != nil {
+			panic(err)
+		}
+	})
 
-	return cookie, nil
+	return nil
 }
 
 // func runWithTimeOut(ctx *context.Context, timeout time.Duration, tasks chromedp.Tasks) chromedp.ActionFunc {
@@ -54,7 +63,7 @@ func Login(email, password string) (string, error) {
 // 	}
 // }
 
-func loginTasks(ctx *context.Context, urlstr string, cookie *string, email, password string) chromedp.Tasks {
+func loginTasks(ctx *context.Context, urlstr string, cookie *string, cookieExpiresAt *time.Time, email, password string) chromedp.Tasks {
 
 	return chromedp.Tasks{
 		chromedp.EmulateViewport(1920, 1080),
@@ -76,6 +85,7 @@ func loginTasks(ctx *context.Context, urlstr string, cookie *string, email, pass
 			for _, c := range cookies {
 				if c.Name == "lwaat" {
 					*cookie = fmt.Sprintf("%s=%s", c.Name, c.Value)
+					*cookieExpiresAt = time.Unix(int64(c.Expires), 0)
 					return nil
 				}
 			}
@@ -130,7 +140,7 @@ func (e *UnauthenticatedOrnikarError) Error() string {
 	return "unauthenticated"
 }
 
-func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
+func GetRemoteLessons(cookie *string) ([]InstructorNextLessonsInterval, error) {
 	url := "https://app-gateway.ornikar.com/graphql"
 	method := "POST"
 	instructorID := 1679645
@@ -173,7 +183,7 @@ func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 	req.Header.Add("Sec-Fetch-Site", "same-site")
 	req.Header.Add("Referer", "https://app.ornikar.com/")
 	req.Header.Add("Connection", "keep-alive")
-	req.Header.Add("Cookie", cookie)
+	req.Header.Add("Cookie", *cookie)
 	req.Header.Add("Pragma", "no-cache")
 	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("TE", "trailers")
@@ -191,7 +201,6 @@ func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 		return []InstructorNextLessonsInterval{}, err
 	}
 
-	// TODO Cookie as pinter and renew here
 	if res.StatusCode == http.StatusBadRequest && strings.Contains(string(body), "UNAUTHENTICATED") {
 		return []InstructorNextLessonsInterval{}, &UnauthenticatedOrnikarError{
 			OrnikarError: OrnikarError{

@@ -117,33 +117,24 @@ func main() {
 	}
 	defer dg.Close()
 
-	cookie, err := ornikar.Login(config.OrnikarEmail, config.OrnikarPassword)
+	var cookie string
+
+	err = ornikar.Login(&cookie, config.OrnikarEmail, config.OrnikarPassword)
 	if err != nil {
 		panic(err)
 	}
 
-	run(&config, dg, cookie)
+	run(&config, dg, &cookie)
 
 	for range time.Tick(time.Second * 60) {
-		run(&config, dg, cookie)
+		run(&config, dg, &cookie)
 	}
 }
 
-func run(config *Config, dg *discordgo.Session, cookie string) {
-	println("Running : " + time.Now().Format("15:04:05"))
+func run(config *Config, dg *discordgo.Session, cookie *string) {
+	log.Println("Requestiong new lessons...")
 
 	lessons, err := ornikar.GetRemoteLessons(cookie)
-	_, ok := err.(*ornikar.UnauthenticatedOrnikarError)
-	if ok {
-		cookie, err := ornikar.Login(config.OrnikarEmail, config.OrnikarPassword)
-		if err != nil {
-			panic(err)
-		}
-		lessons, err = ornikar.GetRemoteLessons(cookie)
-		if err != nil {
-			panic(err)
-		}
-	}
 	if err != nil {
 		panic(err)
 	}
