@@ -41,6 +41,8 @@ func Login(email, password string) (string, error) {
 		return "", err
 	}
 
+	cookie = "lwaat=aze"
+
 	return cookie, nil
 }
 
@@ -111,9 +113,20 @@ type LessonsResponse struct {
 	} `json:"data"`
 }
 
-type UnauthenticatedError struct{}
+type OrnikarError struct {
+	StatusCode int
+	Body       string
+}
 
-func (m *UnauthenticatedError) Error() string {
+func (e *OrnikarError) Error() string {
+	return fmt.Sprintf("ornikar api call failed, status code : %d, body : %s", e.StatusCode, string(e.Body))
+}
+
+type UnauthenticatedOrnikarError struct {
+	OrnikarError
+}
+
+func (e *UnauthenticatedOrnikarError) Error() string {
 	return "unauthenticated"
 }
 
@@ -178,12 +191,21 @@ func GetRemoteLessons(cookie string) ([]InstructorNextLessonsInterval, error) {
 		return []InstructorNextLessonsInterval{}, err
 	}
 
-	if res.StatusCode != http.StatusBadRequest && strings.Contains(string(body), "UNAUTHENTICATED") {
-		return []InstructorNextLessonsInterval{}, &UnauthenticatedError{}
+	// TODO Cookie as pinter and renew here
+	if res.StatusCode == http.StatusBadRequest && strings.Contains(string(body), "UNAUTHENTICATED") {
+		return []InstructorNextLessonsInterval{}, &UnauthenticatedOrnikarError{
+			OrnikarError: OrnikarError{
+				StatusCode: res.StatusCode,
+				Body:       string(body),
+			},
+		}
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return []InstructorNextLessonsInterval{}, fmt.Errorf("ornikar api call failed, status code : %d, body : %s", res.StatusCode, string(body))
+		return []InstructorNextLessonsInterval{}, &OrnikarError{
+			StatusCode: res.StatusCode,
+			Body:       string(body),
+		}
 	}
 
 	var lessons LessonsResponse

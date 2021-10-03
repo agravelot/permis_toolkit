@@ -133,8 +133,7 @@ func run(config *Config, dg *discordgo.Session, cookie string) {
 	println("Running : " + time.Now().Format("15:04:05"))
 
 	lessons, err := ornikar.GetRemoteLessons(cookie)
-	// TODO if 400, refresh cookie
-	_, ok := err.(*ornikar.UnauthenticatedError)
+	_, ok := err.(*ornikar.UnauthenticatedOrnikarError)
 	if ok {
 		cookie, err := ornikar.Login(config.OrnikarEmail, config.OrnikarPassword)
 		if err != nil {
