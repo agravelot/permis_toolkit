@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -146,18 +147,25 @@ func run(config *Config, dg *discordgo.Session, cookie *string) {
 
 	diff := getNewAvailableLessons(localLessons, lessons)
 
-	for _, l := range diff {
-		m := formatMessage(l.StartsAt)
-		err := discord.Notify(dg, m)
-		println(m)
-		if err != nil {
-			panic(err)
-		}
+	if len(diff) == 0 {
+		return
+	}
+
+	m := formatMessage(diff)
+	log.Println(m)
+	err = discord.Notify(dg, m)
+	if err != nil {
+		panic(err)
 	}
 
 	writeDatabase(lessons)
 }
 
-func formatMessage(date time.Time) string {
-	return "Nouvelle sessions disponnible : " + "**" + date.Format("02 January 2006 15:04:05") + "**" + "\nLien : https://app.ornikar.com/planning"
+func formatMessage(lessons []ornikar.InstructorNextLessonsInterval) string {
+	var datesString string
+	for _, l := range lessons {
+		datesString += fmt.Sprintf("- **%s** \n", l.StartsAt.Format("02 January 2006 15:04:05"))
+	}
+
+	return fmt.Sprintf("%d nouvelle sessions disponnible : \n%s \n \nLien : https://app.ornikar.com/planning", len(lessons), datesString)
 }
