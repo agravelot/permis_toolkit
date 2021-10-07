@@ -42,7 +42,7 @@ func Login(cookie *string, email, password string) error {
 	}
 
 	// Refresh cookie before expire
-	accessTokenRefreshAt := cookieExpiresAt.Sub(time.Now().Add(-10 * time.Minute))
+	accessTokenRefreshAt := time.Until(cookieExpiresAt.Add(-10 * time.Minute))
 	log.Println(fmt.Sprintf("ornikar: Access token refresh scheduled in:  %s", accessTokenRefreshAt))
 	time.AfterFunc(accessTokenRefreshAt, func() {
 		log.Println("ornikar: refreshing access token..")
