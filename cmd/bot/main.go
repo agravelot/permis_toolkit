@@ -167,5 +167,5 @@ func formatMessage(lessons []ornikar.InstructorNextLessonsInterval) string {
 		datesString += fmt.Sprintf("- **%s** \n", l.StartsAt.Format("02 January 2006 15:04:05"))
 	}
 
-	return fmt.Sprintf("%d nouvelle sessions disponnible : \n%s \n \nLien : https://app.ornikar.com/planning", len(lessons), datesString)
+	return fmt.Sprintf("%d nouvelle sessions disponnible : \n%s \n \nLien : https://app.ornikar.com/planning @everyone", len(lessons), datesString)
 }
