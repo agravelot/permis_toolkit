@@ -151,7 +151,10 @@ func run(config *Config, dg *discordgo.Session, cookie *string) {
 		return
 	}
 
-	m := formatMessage(diff)
+	m, err := formatMessage(diff)
+	if err != nil {
+		panic(err)
+	}
 	log.Println(m)
 	err = discord.Notify(dg, m)
 	if err != nil {
@@ -161,11 +164,16 @@ func run(config *Config, dg *discordgo.Session, cookie *string) {
 	writeDatabase(lessons)
 }
 
-func formatMessage(lessons []ornikar.InstructorNextLessonsInterval) string {
+func formatMessage(lessons []ornikar.InstructorNextLessonsInterval) (string, error) {
 	var datesString string
-	for _, l := range lessons {
-		datesString += fmt.Sprintf("- **%s** \n", l.StartsAt.Format("02 January 2006 15:04:05"))
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		return "", err
 	}
 
-	return fmt.Sprintf("%d nouvelle sessions disponnible : \n%s \n \nLien : https://app.ornikar.com/planning @everyone", len(lessons), datesString)
+	for _, l := range lessons {
+		datesString += fmt.Sprintf("- **%s** \n", l.StartsAt.In(loc).Format("Monday 02 January 2006 15:04:05"))
+	}
+
+	return fmt.Sprintf("%d nouvelle sessions disponnible : \n%s \n \nLien : https://app.ornikar.com/planning @everyone", len(lessons), datesString), nil
 }
