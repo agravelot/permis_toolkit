@@ -140,17 +140,15 @@ func (e *UnauthenticatedOrnikarError) Error() string {
 	return "unauthenticated"
 }
 
-func GetRemoteLessons(cookie *string) ([]InstructorNextLessonsInterval, error) {
+func GetRemoteLessons(cookie *string, instructorID int) ([]InstructorNextLessonsInterval, error) {
 	url := "https://app-gateway.ornikar.com/graphql"
 	method := "POST"
-	instructorID := 1679645
 
 	now, err := json.Marshal(time.Now())
 	if err != nil {
 		return []InstructorNextLessonsInterval{}, err
 	}
 
-	// TODO Add more config for params
 	payload := strings.NewReader(fmt.Sprintf(`{
 		"operationName": "InstructorNextLessonsIntervalQuery",
 		"variables": {

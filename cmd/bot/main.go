@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/agravelot/permis_toolkit/candilib"
@@ -94,6 +95,7 @@ type Config struct {
 	CandilibEmail   string
 	OrnikarPassword string
 	DiscordToken    string
+	InstructorID    int
 }
 
 func getConfig() (Config, error) {
@@ -102,11 +104,17 @@ func getConfig() (Config, error) {
 		log.Fatal("Error loading .env file")
 	}
 
+	instructorID, err := strconv.Atoi(os.Getenv("INSTRUCTOR_ID"))
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		CandilibEmail:   os.Getenv("CANDILIB_EMAIL"),
 		OrnikarEmail:    os.Getenv("ORNIKAR_EMAIL"),
 		OrnikarPassword: os.Getenv("ORNIKAR_PASSWORD"),
 		DiscordToken:    os.Getenv("DISCORD_TOKEN"),
+		InstructorID:    instructorID,
 	}, err
 }
 
