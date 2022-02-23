@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/agravelot/permis_toolkit/candilib"
-	"github.com/agravelot/permis_toolkit/cron"
 	"github.com/agravelot/permis_toolkit/discord"
 	"github.com/agravelot/permis_toolkit/ornikar"
 	"github.com/bwmarrin/discordgo"
@@ -92,7 +90,6 @@ func writeDatabase(lessons []ornikar.InstructorNextLessonsInterval) error {
 
 type Config struct {
 	OrnikarEmail    string
-	CandilibEmail   string
 	OrnikarPassword string
 	DiscordToken    string
 	InstructorID    int
@@ -110,7 +107,6 @@ func getConfig() (Config, error) {
 	}
 
 	return Config{
-		CandilibEmail:   os.Getenv("CANDILIB_EMAIL"),
 		OrnikarEmail:    os.Getenv("ORNIKAR_EMAIL"),
 		OrnikarPassword: os.Getenv("ORNIKAR_PASSWORD"),
 		DiscordToken:    os.Getenv("DISCORD_TOKEN"),
@@ -136,10 +132,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	go cron.Run(func() error {
-		return candilib.MagicLink(config.CandilibEmail)
-	})
 
 	run(&config, dg, &cookie)
 
