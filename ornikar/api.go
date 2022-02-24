@@ -17,7 +17,6 @@ import (
 
 const ornikarUrl = "https://www.ornikar.com/connexion"
 const loginButtonSelector = "#app-boilerplate-root-element > div > div.styles_AppPageWithoutShell__22P5T > div.styles_AuthenticationLayout__381Bv > div.styles_Container__cW10h > div.kitt_Container_XI20R.kitt_DepthHigh_2cpa8.styles_Card__9TFUm > div > div.styles_Form__3rHXh > div > form > div.auth_SignInSubmit_3mDF7 > button"
-const homeSelector = "#app-boilerplate-root-element > div > div:nth-child(2) > div > div.styles_Content__2ZZRg > div:nth-child(2) > div.styles_GridLayout__1Sg3D > div.styles_Row__3bxvG > div.styles_Column__YfouA.styles_Span2__-FcHP > div.styles_Container__1Xn_M.styles_ContainerWithActions__1mSJa.styles_ContainerWithActionsOnColumn__cGdPZ.styles_SectionHeader__3ZvjM > div.styles_Title__6PgIA > h4"
 
 func Login(cookie *string, email, password string) error {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -74,7 +73,7 @@ func loginTasks(ctx *context.Context, urlstr string, cookie *string, cookieExpir
 		chromedp.SendKeys(`//input[@name="password"]`, password),
 		chromedp.WaitVisible(loginButtonSelector),
 		chromedp.Click(loginButtonSelector, chromedp.NodeVisible),
-		chromedp.WaitVisible(homeSelector),
+		chromedp.Sleep(1 * time.Second),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			cookies, err := network.GetAllCookies().Do(ctx)
