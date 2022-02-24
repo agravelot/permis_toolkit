@@ -159,14 +159,17 @@ func run(config *Config, dg *discordgo.Session, cookie *string) {
 		return
 	}
 
-	m, err := formatMessage(diff)
-	if err != nil {
-		panic(err)
-	}
-	log.Println(m)
-	err = discord.Notify(dg, m)
-	if err != nil {
-		panic(err)
+	// Discord limit to 2000 characters
+	for _, chunk := range discord.Chunk(diff, 40) {
+		m, err := formatMessage(chunk)
+		if err != nil {
+			panic(err)
+		}
+		log.Println(m)
+		err = discord.Notify(dg, m)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	writeDatabase(lessons)
