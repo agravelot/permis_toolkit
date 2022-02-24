@@ -9,10 +9,9 @@ func Chunk(lessons []ornikar.InstructorNextLessonsInterval, size int) [][]ornika
 	chunks := make([][]ornikar.InstructorNextLessonsInterval, 0)
 	for i := 0; i < len(lessons); i += size {
 		end := i + size
-		// If case of last chunk
+		// In case of last chunk less than size
 		if i+size > len(lessons) {
-			chunks = append(chunks, lessons[i:])
-			continue
+			end = len(lessons)
 		}
 		chunks = append(chunks, lessons[i:end])
 	}
