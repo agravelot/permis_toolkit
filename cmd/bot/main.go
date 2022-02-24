@@ -141,7 +141,7 @@ func main() {
 }
 
 func run(config *Config, dg *discordgo.Session, cookie *string) {
-	log.Println("Requestiong new lessons...")
+	log.Println("Requesting new lessons...")
 
 	lessons, err := ornikar.GetRemoteLessons(cookie, config.InstructorID)
 	if err != nil {
