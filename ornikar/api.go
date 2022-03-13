@@ -37,7 +37,7 @@ func Login(cookie *string, email, password string) error {
 
 	var cookieExpiresAt time.Time
 	if err := chromedp.Run(ctx, loginTasks(&ctx, ornikarUrl, cookie, &cookieExpiresAt, email, password)); err != nil {
-		return err
+		return fmt.Errorf("unable run chromedp: %w", err)
 	}
 
 	// Refresh cookie before expire
@@ -47,7 +47,7 @@ func Login(cookie *string, email, password string) error {
 		log.Println("ornikar: refreshing access token..")
 		err := Login(cookie, email, password)
 		if err != nil {
-			panic(err)
+			log.Println(fmt.Errorf("unable to get access token: %w", err))
 		}
 	})
 
@@ -78,7 +78,7 @@ func loginTasks(ctx *context.Context, urlstr string, cookie *string, cookieExpir
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			cookies, err := network.GetAllCookies().Do(ctx)
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to get cookies: %w", err)
 			}
 
 			for _, c := range cookies {
@@ -145,7 +145,7 @@ func GetRemoteLessons(cookie *string, instructorID int) ([]InstructorNextLessons
 
 	now, err := json.Marshal(time.Now())
 	if err != nil {
-		return []InstructorNextLessonsInterval{}, err
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("unable to marshal now time: %w", err)
 	}
 
 	payload := strings.NewReader(fmt.Sprintf(`{
@@ -163,11 +163,10 @@ func GetRemoteLessons(cookie *string, instructorID int) ([]InstructorNextLessons
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
-
 	if err != nil {
-		fmt.Println(err)
-		return []InstructorNextLessonsInterval{}, err
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("unable to create request: %w", err)
 	}
+
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0")
 	req.Header.Add("Accept", "*/*")
 	req.Header.Add("Accept-Language", "fr,en-US;q=0.7,en;q=0.3")
@@ -187,15 +186,13 @@ func GetRemoteLessons(cookie *string, instructorID int) ([]InstructorNextLessons
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return []InstructorNextLessonsInterval{}, err
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("unable to lessons from ornikar api: %w", err)
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
-		return []InstructorNextLessonsInterval{}, err
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("unable to read response body: %w", err)
 	}
 
 	if res.StatusCode == http.StatusBadRequest && strings.Contains(string(body), "UNAUTHENTICATED") {
@@ -216,7 +213,7 @@ func GetRemoteLessons(cookie *string, instructorID int) ([]InstructorNextLessons
 
 	var lessons LessonsResponse
 	if err := json.Unmarshal(body, &lessons); err != nil {
-		return []InstructorNextLessonsInterval{}, err
+		return []InstructorNextLessonsInterval{}, fmt.Errorf("unable to unmarshal response body: %w", err)
 	}
 
 	return lessons.Data.InstructorNextLessonsInterval, nil

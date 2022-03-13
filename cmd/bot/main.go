@@ -50,20 +50,20 @@ func getNewAvailableLessons(localLessons, remoteLessons []ornikar.InstructorNext
 func getLocalLessons() ([]ornikar.InstructorNextLessonsInterval, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return []ornikar.InstructorNextLessonsInterval{}, err
+		return []ornikar.InstructorNextLessonsInterval{}, fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
 	if _, err := os.Stat(cwd + "/" + databaseFileName); err == nil {
 		jsonFile, err := os.Open(databaseFileName)
 		if err != nil {
-			return []ornikar.InstructorNextLessonsInterval{}, err
+			return []ornikar.InstructorNextLessonsInterval{}, fmt.Errorf("unable read database file: %w", err)
 		}
 		defer jsonFile.Close()
 		var localLessons []ornikar.InstructorNextLessonsInterval
 
 		byteValue, err := ioutil.ReadAll(jsonFile)
 		if err != nil {
-			return []ornikar.InstructorNextLessonsInterval{}, err
+			return []ornikar.InstructorNextLessonsInterval{}, fmt.Errorf("failed to read database file: %w", err)
 		}
 
 		json.Unmarshal(byteValue, &localLessons)
@@ -77,12 +77,12 @@ func getLocalLessons() ([]ornikar.InstructorNextLessonsInterval, error) {
 func writeDatabase(lessons []ornikar.InstructorNextLessonsInterval) error {
 	file, err := json.MarshalIndent(lessons, "", " ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal lessons: %w", err)
 	}
 
 	err = ioutil.WriteFile(databaseFileName, file, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write database: %w", err)
 	}
 
 	return nil
@@ -98,12 +98,12 @@ type Config struct {
 func getConfig() (Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return Config{}, fmt.Errorf("enable loading .env file: %w", err)
+		log.Println("unable loading .env file")
 	}
 
 	instructorID, err := strconv.Atoi(os.Getenv("INSTRUCTOR_ID"))
 	if err != nil {
-		return Config{}, err
+		return Config{}, fmt.Errorf("failed to parse INSTRUCTOR_ID: %w", err)
 	}
 
 	return Config{
@@ -117,12 +117,12 @@ func getConfig() (Config, error) {
 func main() {
 	config, err := getConfig()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	dg, err := discord.Start(config.DiscordToken)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer dg.Close()
 
@@ -130,53 +130,63 @@ func main() {
 
 	err = ornikar.Login(&cookie, config.OrnikarEmail, config.OrnikarPassword)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	run(&config, dg, &cookie)
+	err = run(&config, dg, &cookie)
+	if err != nil {
+		log.Println(err)
+	}
 
-	for range time.Tick(time.Second * 60) {
-		run(&config, dg, &cookie)
+	for range time.Tick(1 * time.Minute) {
+		err := run(&config, dg, &cookie)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
-func run(config *Config, dg *discordgo.Session, cookie *string) {
+func run(config *Config, dg *discordgo.Session, cookie *string) error {
 	log.Println("Requesting new lessons...")
 
 	lessons, err := ornikar.GetRemoteLessons(cookie, config.InstructorID)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to get remote lessons: %w", err)
 	}
 
 	localLessons, err := getLocalLessons()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to get local lessons: %w", err)
 	}
 
 	diff := getNewAvailableLessons(localLessons, lessons)
 
 	if len(diff) == 0 {
-		return
+		return nil
 	}
 
-	m, err := formatMessage(diff)
-	if err != nil {
-		panic(err)
-	}
-	log.Println(m)
-	err = discord.Notify(dg, m)
-	if err != nil {
-		panic(err)
+	// Discord limit to 2000 characters
+	for _, chunk := range discord.Chunk(diff, 40) {
+		m, err := formatMessage(chunk)
+		if err != nil {
+			return fmt.Errorf("failed to format message: %w", err)
+		}
+		log.Println(m)
+		err = discord.Notify(dg, m)
+		if err != nil {
+			return fmt.Errorf("failed to notify: %w", err)
+		}
 	}
 
 	writeDatabase(lessons)
+	return nil
 }
 
 func formatMessage(lessons []ornikar.InstructorNextLessonsInterval) (string, error) {
 	var datesString string
 	loc, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to load timezone: %w", err)
 	}
 
 	for _, l := range lessons {
