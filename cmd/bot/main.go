@@ -98,7 +98,7 @@ type Config struct {
 func getConfig() (Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return Config{}, fmt.Errorf("enable loading .env file: %w", err)
+		log.Println("unable loading .env file")
 	}
 
 	instructorID, err := strconv.Atoi(os.Getenv("INSTRUCTOR_ID"))
